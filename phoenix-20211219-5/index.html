@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <meta
+    http-equiv="X-UA-Compatible"
+    content="ie=edge"
+  >
+  <title>菲尼克斯体验馆_众业达商城</title>
+  <link href="/images/favicon.ico" rel="icon" type="image/x-icon" />
+  <link rel="stylesheet" href="/css/common.css?v=20211119">
+  <link rel="stylesheet" href="./css/phoenix.css">
+  <link rel="stylesheet" href="/css/libs/swiper.css">
+  <!-- 文章内容样式 -->
+  <link rel="stylesheet" href="/css/libs/quill.snow.css" />
+</head>
+
+<body>
+  <div
+    id="phoenix"
+    class="phoenix-page"
+  >
+    <header-top
+      v-if="isLogin"
+      @quit="headerQuit"
+    ></header-top>
+    <window-login
+      v-if="loginShow"
+      @close="loginClose"
+      type="noOpera"
+      @success="loginsuccess"
+    ></window-login>
+    <!-- 首屏 -->
+    <phoenix-banner
+      :banner-info="bannerInfo"
+      :brand-id="brandId"
+    >
+    </phoenix-banner>
+    <!-- 首屏 end -->
+    <div
+      ref="scrollView"
+      class="phoenix__main"
+      v-cloak
+    >
+      <!-- 模块导航 -->
+      <div
+        class="phoenix-nav"
+        :class="{isFixed:isFixNav}"
+      >
+        <img
+          class="phoenix-nav__logo"
+          :src="bannerInfo.stop_logo_img_url"
+          alt="菲尼克斯logo"
+        />
+        <ul
+          class="phoenix-nav__menu"
+          :class="{hide:isShowSearchForm}"
+        >
+          <li
+            v-for="(module,moduleIndex) in modules"
+            :key="module.name"
+            class="phoenix-nav__item"
+            :class="{active:activeMenu===moduleIndex+1}"/
+            @click="scrollTo(moduleIndex+1)"
+          >{{module.label}}</li>
+        </ul>
+        <!-- 搜索 -->
+        <div class="phoenix-search">
+          <i
+            class="iconfont iconsousuoicon phoenix-search__icon-search"
+            @click="isShowSearchForm=true"
+          ></i>
+          <template v-if="isShowSearchForm">
+            <input
+              class="phoenix-search__input"
+              v-model="keyword"
+              placeholder="请输入产品名称/品牌/订货号/型号/规格参数"
+              @keyup.enter="searchClick"
+            />
+            <z-button
+              v-show="keyword.length"
+              class="phoenix-search__button z-btn--phoenix"
+              type="primary"
+              class="search-btn"
+              @click="searchClick"
+            >搜索</z-button>
+            <i
+              class="phoenix-search__icon-close iconfont iconguanbidanchuang"
+              @click="isShowSearchForm=false"
+            ></i>
+          </template>
+        </div>
+        <!-- 搜索 end -->
+      </div>
+      <!-- 模块导航 end -->
+      <!-- 各模块组件 -->
+      <components
+        v-for="(module,moduleIndex) in modules"
+        :ref="`menu${moduleIndex+1}`"
+        :key="module.name"
+        :is="module.name"
+        :banner-info="bannerInfo"
+        :brand-id="brandId"
+        :is-login="isLogin"
+        class="phoenix-section"
+        @showLogin="showLoginModal"
+      ></components>
+      <!-- 悦享视界 new  -->
+      <!-- <phoenix-video class="phoenix-section"></phoenix-video>
+      悦享视界 new  end
+      新品上市
+      <phoenix-new-product
+        ref="menu3"
+        :brand-id="brandId"
+      ></phoenix-new-product>
+      新品上市 end
+      热卖好货
+      <phoenix-hot
+        :brand-id="brandId"
+        :is-login="isLogin"
+      ></phoenix-hot>
+      热卖好货 end
+      菲凡之选
+      <phoenix-recommend :brand-id="brandId"></phoenix-recommend>
+      菲凡之选 end
+      <div class="content-box">
+      菲常好礼
+      <phoenix-activity :brand-id="brandId"></phoenix-activity>
+      菲常好礼 end
+      全部品类
+      <phoenix-all-cate
+        :brand-id="brandId"
+        :banner-info="bannerInfo"
+      ></phoenix-all-cate> -->
+      <!-- 友情链接 -->
+      <div class="link-box">
+        友情链接：
+        <a
+          :href="item.sfriend_url"
+          target="_blank"
+          v-for="item in linkList"
+        >
+          {{item.sfriend_name}}
+          <div>{{item.sfriend_name}}</div>
+        </a>
+      </div>
+      <footer-bottom></footer-bottom>
+      <!-- </div> -->
+      <!-- 戳我留言 -->
+      <div
+        class="qt-img"
+        :class="{active:isShowMessageEnter}"
+        @click="imgLink()"
+      >
+        <img
+          class="gif-body"
+          src="images/gif1.png?v=20210226"
+          alt=""
+        >
+        <img
+          class="gif-hand"
+          src="images/gif2.png?v=20210226"
+          alt=""
+        >
+      </div>
+      <!-- 戳我留言 end -->
+      <ask-question
+        :pop="ask.pop"
+        :close-img="true"
+        :title="ask.title"
+        :pop-wid="ask.width"
+        @asksubmit="askClose"
+        module="品牌专区"
+        @close="askClose"
+        v-if="loadQt"
+      ></ask-question>
+      <!-- 查看图片弹窗 -->
+      <div
+        class="pic-modal"
+        :class="{'show':showPic}"
+        v-if="newList.length > 0"
+        v-cloak
+      >
+        <div>
+          <div class="modal-img-box">
+            <img
+              :src="item.simgContent"
+              alt=""
+              v-for="(item,index) in newList"
+              v-show="chooseNewIdx == index"
+            >
+          </div>
+          <div
+            class="modal-close-box"
+            v-show="!isFirefox || (isFirefox && showClose)"
+          >
+            <div
+              class="viewer-button viewer-close"
+              @click="showPicModal"
+            ></div>
+          </div>
+        </div>
+      </div>
+      <side-bar
+        :sdraft-id="sdraft_id"
+        @clickcall="clickcall"
+        :is-right="true"
+      ></side-bar>
+    </div>
+    <dialog-message
+      v-if="visibleDialogMessage"
+      :visible.sync="visibleDialogMessage"
+    ></dialog-message>
+  </div>
+  <script
+    type="text/javascript"
+    src="/js/tow.js?v=20211204"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./js/echarts.js"
+  ></script>
+  <!-- <script
+    type="text/javascript"
+    src="/js/libs/swiper.js"
+  ></script> -->
+  <script
+    type="text/javascript"
+    src="/js/api/brands.js"
+  ></script>
+  <!-- 菲尼克斯品牌站api -->
+  <script
+    type="text/javascript"
+    src="/js/api/apiPhoenix.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="js/index.js?v=20211123"
+  ></script>
+  <script
+    type="text/javascript"
+    src="/js/component/askQuestion.js"
+  ></script>
+  <!-- <script
+    type="text/javascript"
+    src="./components/PhoenixNav.js"
+  ></script> -->
+  <script
+    type="text/javascript"
+    src="./components/PhoenixVideo.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixBanner.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixNewProduct.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixHot.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixRecommend.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixActivity.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixSubsidiary.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/PhoenixAllCate.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/DialogArticleDetail.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="./components/DialogMessage.js"
+  ></script>
+  <script
+    type="text/javascript"
+    src="/js/component/zDialogPlain.js"
+  ></script>
+  <link rel="stylesheet" href="/css/component/askQuestion.css">
+  <script>
+  //获取字符串字节长度
+  String.prototype.byteLength = function() { //获取字符串的字节数，扩展string类型方法
+    var b = 0;
+    var l = this.length; //初始化字节数递加变量并获取字符串参数的字符个数
+    var txt = ''
+    if (l) { //如果存在字符串，则执行计划
+      for (var i = 0; i < l; i++) { //遍历字符串，枚举每个字符
+        if (this.charCodeAt(i) > 255) { //字符编码大于255，说明是双字节字符
+          b += 2; //则累加2个
+        } else {
+          b++; //否则递加一次
+        }
+
+        if (b < 39) {
+          txt = txt + this[i]
+        }
+      }
+      return {
+        len: b,
+        txt
+      }; //返回字节数
+    } else {
+      return {
+        len: 0,
+        txt
+      }; //如果参数为空，则返回0个
+    }
+  }
+
+  setTimeout(() => {
+    setManLeft()
+  }, 200)
+  var timer = null; //镇店之宝计时器
+  var vue = new Vue({
+    el: '#phoenix',
+    data: {
+      // 品牌信息
+      bannerInfo: {},
+      // 是否让导航吸顶
+      isFixNav: false,
+      // changeState: 0,
+      keyword: '',
+      brandId: 0,
+      showNewCon: false, //悦享视频控制组件
+      mySwiper: null,
+      mySwiperWelfare: null,
+      mySwiperProduct: null,
+      mySwiperAll: null,
+      swiperRead: null,
+      swiperIdx: 1,
+      logPlayIdx: 1, //记录悦享播放下标
+      logProductPlayIdx: 1, //记录新产品播放下标
+      chooseNewIdx: -1,
+      welfareIdx: 0,
+      activeList: [], //活动列表
+      showProductCon: false, //新品视频控制组件
+      allCidx: 0, //全部品类二级下标
+      allChildList: [],
+      newList: [],
+      newVideoList: [],
+      linkList: [],
+      loginStatus: false,
+      loginShow: false,
+      clickGif: false,
+      ask: {
+        pop: false,
+        title: '提问题/建议',
+        width: 679,
+        module: "品牌专区"
+      },
+      loadQt: false,
+      showPic: false,
+      isLogin: false,
+      showSelect: -1,
+      allSwiperHeight: 0,
+      scrollWidth: 0,
+      isFirefox: false,
+      showClose: false,
+      logFireList: [],
+      sdraft_id: 0,
+      logNewIdx: [],
+      // robStatus: false
+      readactiveIndex: 1,
+      // 是否显示悬浮导航的搜索框
+      isShowSearchForm: false,
+      // 当前视窗显示的菜单
+      activeMenu: 0,
+      // navMenus: ['悦享世界', '新品上市', '热卖好货', '菲凡之选', '菲常好礼', '产品星选官', '产品支持及服务', '全部品类'],
+      modules: [
+        // { name: 'TheRules',  menu: '云展会' },
+        { name: 'PhoenixVideo', label: '悦享世界' },
+        { name: 'PhoenixNewProduct', label: '新品上市' },
+        { name: 'PhoenixHot', label: '热卖好货' },
+        { name: 'PhoenixRecommend', label: '菲凡之选' },
+        { name: 'PhoenixActivity', label: '菲常好礼' },
+        { name: 'PhoenixSubsidiary', label: '产品支持及服务' },
+        { name: 'PhoenixAllCate', label: '全部品类' },
+      ],
+      // 是否显示留言弹窗
+      visibleDialogMessage: false,
+      isShowMessageEnter: false
+    },
+    // created() {
+    //   window.addEventListener('beforeunload', e => {
+    //     window.scroll(0, 0)
+    //   })
+    // },
+    beforeDestroy() {
+      window.removeEventListener("scroll", this.handleScroll);
+    },
+    created() {
+      let isLogin = zyd_helpers.cookie.get("zyd_id");
+      console.log('isLogin',isLogin)
+      if (isLogin) {
+        this.loginStatus = true;
+      }
+      this.brandId = getUrlParam("id");
+      this.getInfo();
+      this.getActiveImg()
+      // this.getBest()
+      this.getNewList()
+
+      this.getNewVideo()
+      this.getLink()
+      this.firefox()
+    },
+    mounted() {
+      // showGif()
+      this.scrollWidth = getScrollbarWidth()
+      //监听页面滚动
+      let gifDom = document.getElementsByClassName('qt-img');
+      let dom = document.querySelector('.all-box');
+      let top = dom.getBoundingClientRect().top;
+      // window.onscroll = () => {
+      //   var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      //   if (scrollTop > top + 838) {
+      //     this.floatNav = true;
+      //   } else {
+      //     this.floatNav = false;
+      //   }
+
+      //   if (scrollTop > document.querySelector('.product-box').offsetTop - 111) {
+      //     gifDom[0].classList.add('show')
+      //   } else {
+      //     gifDom[0].classList.remove('show')
+      //   }
+      // }
+
+      window.onresize = () => {
+        this.reScale()
+      }
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.reScale()
+        }, 1000)
+        // 监听（绑定）滚轮滚动事件
+        window.addEventListener("scroll", this.handleScroll);
+
+      })
+    },
+    methods: {
+      getScrollbarWidth() {
+        var odiv = document.createElement('div'), //创建一个div
+          styles = {
+            width: '100px',
+            height: '100px',
+            overflowY: 'scroll' //让他有滚动条
+          },
+          i, scrollbarWidth;
+        for (i in styles) odiv.style[i] = styles[i];
+        document.body.appendChild(odiv); //把div添加到body中
+        scrollbarWidth = odiv.offsetWidth - odiv.clientWidth; //相减
+        odiv.remove(); //移除创建的div
+        return scrollbarWidth; //返回滚动条宽度
+      },
+      toIndex() {
+        location.href = '/'
+      },
+      reScale() {
+        let scale = detectZoom();
+        if (scale == 90 || scale == 110) {
+          this.scale = 100
+          this.$nextTick(() => {
+            let w = document.querySelector('.best-item.one').getBoundingClientRect()
+            this.width = w.width / 12
+            this.scale = scale;
+          })
+        } else if (scale == 80) {
+          this.scale = 100
+          this.$nextTick(() => {
+            let w = document.querySelector('.best-item.one').getBoundingClientRect()
+            this.width = w.width / 12
+            this.scale = 80
+          })
+        } else {
+          this.width = 23
+          this.scale = 100;
+        }
+      },
+      //是否为火狐浏览器
+      firefox() {
+        if (navigator.userAgent.indexOf("Firefox") > 0) {
+          this.isFirefox = true
+        }
+      },
+      //获取门店基本信息
+      getInfo() {
+        brandsApi.brand.getBrandInfo({
+          id: this.brandId
+        }, res => {
+          if (res.code == 0) {
+            this.bannerInfo = res.data.info
+          }
+        })
+      },
+      //获取友情链接
+      getLink() {
+        brandsApi.brand.getLink({
+          id: this.brandId
+        }, res => {
+          if (res.code == 0) {
+            this.linkList = res.data.list
+          }
+        })
+      },
+      //获取镇店之宝
+      // getBest() {
+      //   brandsApi.brand.getBest({ id: this.id }, res => {
+      //     if (res.code == 0) {
+      //       if (res.data.list == null) {
+      //         return;
+      //       }
+      //       this.recommendList = res.data.list
+      //     }
+      //   })
+      // },
+      //获取活动轮播图
+      getActiveImg() {
+        let _this = this;
+        brandsApi.brand.getActiveImg(this.brandId, res => {
+          if (res.code == 0) {
+            let idx = -1
+            res.data.map((item, index) => {
+              if (item.statusCode == 1 && idx == -1) {
+                idx = index
+              }
+
+              if (index == res.data.length - 1 && idx == -1) {
+                res.data.map((item2, index2) => {
+                  if (item2.statusCode == 3 && idx == -1) {
+                    idx = index2
+                  }
+                })
+              }
+            })
+
+            if (idx == -1 && res.data.length >= 3) idx = 0
+
+            if (res.data.length < 3) {
+              if (idx != -1) {
+                idx++
+              } else {
+                idx = res.data.length == 1 ? 2 : 0
+              }
+            }
+
+            this.activeList = res.data
+            this.$nextTick(() => {
+              this.setActiveSwiper(idx)
+            })
+          }
+        })
+      },
+      //获取文章列表
+      getNewList() {
+        let _this = this;
+        brandsApi.brand.getNewList(this.brandId, res => {
+          if (res.code == 0) {
+            res.data.map(item => {
+              item.simgIntro = imgpath + item.simgIntro
+              item.simgContent = imgpath + item.simgContent
+            })
+            var temp = res.data;
+            // for(let i=0;i<temp.length;i++){
+            //     temp[i].stitle = temp[i].stitle.length>18?temp[i].stitle.substring(0,17)+'...':temp[i].stitle
+            // }
+            this.newList = temp;
+            this.$nextTick(() => {
+              this.imgLoad()
+              this.readSwiperInit()
+            })
+          }
+        })
+      },
+      // 文章列表轮播
+      readSwiperInit() {
+        var _this = this;
+        this.swiperRead = new Swiper('.readSwiper', {
+          loop: true,
+          // initialSlide: 1,
+          autoplay: true,
+          speed: 1000,
+          effect: 'fade',
+          fadeEffect: {
+            crossFade: true,
+          },
+          // slidesPerView: 3,
+          // centeredSlides: true,
+          // watchSlidesProgress: true,
+          on: {
+            slideNextTransitionStart: function(swiper) {
+              _this.$nextTick(() => {
+                _this.readactiveIndex = this.activeIndex;
+                if (this.activeIndex == 5) {
+                  _this.readactiveIndex = 1;
+                }
+                _this.$forceUpdate()
+              })
+
+            },
+            setTranslate: function() {
+              // slides = this.slides
+              // for (i = 0; i < slides.length; i++) {
+              //     slide = slides.eq(i)
+              //     progress = slides[i].progress
+              //     slide.css({
+              //         'opacity': '',
+              //         'background': ''
+              //     });
+              //     slide.transform(''); //清除样式
+              //     slide.transform('scale(' + (1 - Math.abs(progress) / 4.4) + ')');
+              // }
+            },
+            setTransition: function(transition) {
+              // for (var i = 0; i < this.slides.length; i++) {
+              //     var slide = this.slides.eq(i)
+              //     slide.transition(transition);
+              // }
+            },
+          }
+        });
+      },
+      //预加载图片
+      imgLoad() {
+        this.newList.map(item => {
+          let img = new Image()
+          img.src = item.simgContent;
+          img.onload = function() {
+
+          }
+        })
+      },
+      //获取悦享视频图片列表
+      getNewVideo() {
+        let _this = this
+        brandsApi.brand.getNewVideo(this.brandId, res => {
+          if (res.code == 0) {
+            res.data.map(item => {
+              item.simg = imgpath + item.simg
+              if (item.stype == 'video') {
+                item.spath = imgpath + item.spath
+                item.play = false
+              }
+            })
+
+            this.newVideoList = res.data
+
+
+            this.$nextTick(() => {
+              this.setSwiper()
+            })
+          }
+        })
+      },
+      //福利swiper实例化
+      setActiveSwiper(idx) {
+        let _this = this;
+        this.mySwiperWelfare = new Swiper('.swiper-container-welfare', {
+          autoplay: {
+            delay: 5000,
+          },
+          loop: true,
+          slidesPerView: "auto",
+          initialSlide: idx, //默认显示第二张
+          spaceBetween: 15,
+          speed: 1500,
+          pagination: {
+            el: '.swiper-pagination-welfare',
+            clickable: true,
+          },
+          on: {
+            slideChangeTransitionEnd: function() {
+              _this.welfareIdx = this.realIndex
+              // let dom = document.querySelectorAll('.welfare-cover')
+              let statusDom = document.querySelectorAll('.welfare-status')
+              // let showDom = document.querySelectorAll('#welfare-cover' + this.realIndex)
+              // for(let i = 0; i < dom.length; i ++){
+              //     dom[i].style.display = 'block'
+              //     if(i ==  dom.length - 1){
+              //         for(let j = 0; j < showDom.length; j ++){
+              //             showDom[j].style.display = 'none'
+              //         }
+              //     }
+              // }
+              for (let i = 0; i < statusDom.length; i++) {
+                let idx = statusDom[i].getAttribute('data-idx')
+                let pre = this.realIndex - 1;
+                if (pre < 0) pre = _this.activeList.length >= 3 ? _this.activeList.length - 1 : 2;
+                if (idx == pre) {
+                  statusDom[i].classList.add('new')
+                } else {
+                  statusDom[i].classList.remove('new')
+                }
+              }
+            }
+          }
+        })
+
+        let activeDom = document.querySelectorAll('.welfare-box .welfare-slide')
+        for (let i = 0; i < activeDom.length; i++) {
+          activeDom[i].addEventListener('mouseover', () => {
+            let idx = activeDom[i].dataset.idx
+            if (idx == this.welfareIdx) {
+              this.mySwiperWelfare.autoplay.stop();
+            }
+          })
+          activeDom[i].addEventListener('mouseout', () => {
+            this.mySwiperWelfare.autoplay.start();
+          })
+        }
+      },
+
+      //悦享swiper实例化
+      setSwiper() {
+        //悦享视界swiper
+        let _this = this;
+        this.mySwiper = new Swiper('.swiper-container-share', {
+          autoplay: {
+            delay: 3000,
+          },
+          loop: true,
+          navigation: {
+            prevEl: '.swiper-button-prev',
+            nextEl: '.swiper-button-next',
+          },
+          on: {
+            slideChangeTransitionEnd: function() {
+              if (_this.mySwiper) _this.mySwiper.autoplay.start();
+              let slideDom = this.$el[0].querySelectorAll('.swiper-slide');
+              //为没绑定点击事件的播放按钮添加事件
+              for (let i = 0; i < slideDom.length; i++) {
+                let iconDom = slideDom[i].querySelector('.play-icon')
+                let videoDom = slideDom[i].querySelector('.new-swiper-video')
+                let coverDom = slideDom[i].querySelector('.play-cover')
+                let picDom = slideDom[i].querySelector('.new-swiper-item')
+
+                if (videoDom) videoDom.pause()
+                if (iconDom && !iconDom.onclick && videoDom) {
+                  iconDom.onclick = () => {
+                    videoDom.setAttribute('controls', 'controls')
+                    videoDom.play()
+                    coverDom.style.display = 'none'
+                    var a = document.getElementsByClassName('swiper-slide')[i].getAttribute("data-swiper-slide-index");
+                    var temp = '.slide' + a + ' .play-cover';
+                    let temp2 = this.$el[0].querySelectorAll(temp)
+                    var temp3 = '.slide' + a + ' .new-swiper-video';
+                    for (let i = 0; i < temp2.length; i++) {
+                      temp2[i].style.display = 'none'
+                    }
+                    // for(let i=0;i<temp3.length;i++){
+                    //     temp3[i].setAttribute('controls', 'controls')
+                    // }
+                  }
+                  //监听视频播放完毕
+                  if (videoDom) {
+                    videoDom.addEventListener("playing", () => {
+                      _this.stopPlayVideo('.product-box video')
+                      _this.logPlayIdx = this.realIndex + 1
+                      _this.mySwiper.autoplay.stop();
+                    })
+                    videoDom.addEventListener("ended", () => {
+                      // videoDom.setAttribute('controls','')
+                      videoDom.removeAttribute('controls')
+                      videoDom.load()
+                      coverDom.style.display = 'block'
+                      _this.mySwiper.autoplay.start();
+                    })
+                    videoDom.addEventListener('pause', () => {
+                      let allNowVideo = document.querySelectorAll('#new-video' + (_this.logPlayIdx - 1))
+                      let s = videoDom.currentTime;
+                      for (let i = 0; i < allNowVideo.length; i++) {
+                        let preNode = allNowVideo[i].previousSibling
+                        // preNode.previousElementSibling.style.display = 'none'
+                        allNowVideo[i].currentTime = s;
+                        allNowVideo[i].setAttribute('controls', 'controls')
+                      }
+                    })
+                  }
+                }
+                if (picDom && !picDom.onclick) {
+                  let url = picDom.dataset.url;
+                  if (url) {
+                    picDom.onclick = () => {
+                      window.open(url)
+                    }
+                    picDom.style.cursor = 'pointer'
+                  }
+                }
+              }
+
+              _this.swiperIdx = this.realIndex + 1
+            }
+          }
+        })
+
+        // _this.mySwiper.el.onmouseover = () => { //鼠标放上暂停轮播
+        //   _this.mySwiper.autoplay.stop();
+        // }
+        // _this.mySwiper.el.onmouseleave = (event) => {
+        //   let video = document.querySelector('.new-content .swiper-box .swiper-wrapper .swiper-slide-active .new-swiper-video')
+        //   if (video && video.currentTime == 0) {
+        //     _this.mySwiper.autoplay.start();
+        //   }
+        //   if (!video) {
+        //     _this.mySwiper.autoplay.start();
+        //   }
+        // }
+      },
+      //暂停播放视频
+      stopPlayVideo(dom) {
+        let videoList = document.querySelectorAll(dom);
+        for (let i = 0; i < videoList.length; i++) {
+          videoList[i].pause()
+        }
+      },
+      // 退出登录
+      headerQuit() {
+        this.loginStatus = false
+        // window.location.reload()
+      },
+      searchClick() {
+        if (this.keyword)
+          window.open('/product/search.html?from=search&brand=' + this.bannerInfo.sbrand_name + '&tag=' + this.keyword)
+      },
+      playNewVideo(idx) {
+        let dom = document.getElementById(`new-video${idx}`)
+        dom.play()
+        this.newVideoList[idx].play = true
+        // this.showNewCon = true
+        this.mySwiper.autoplay.stop();
+      },
+      playProductVideo(idx) {
+        let dom = document.getElementById(`productVideo${idx}`)
+        dom.play()
+        // this.showProductCon = true
+        this.productList[idx].play = true
+        this.mySwiperProduct.autoplay.stop();
+      },
+      swiper_moveout() {
+        this.swiperRead.autoplay.start();
+      },
+      slider: function(i) {
+        this.swiperRead.autoplay.stop();
+        this.swiperRead.slideToLoop(i);
+        this.readactiveIndex = i + 1;
+        this.$forceUpdate()
+      },
+      clickNewList(idx, bol) {
+
+        this.chooseNewIdx = idx
+        if (bol) {
+          this.swiperRead.slideToLoop(idx);
+        }
+        this.logNewIdx.map(item => {
+          if (item.idx == idx) {
+            setTimeout(() => {
+              let div = document.querySelector('.pic-modal div')
+              div.scrollTop = item.top;
+            }, 10)
+          }
+        })
+        this.showPicModal()
+        let body = document.querySelector('body')
+        body.classList.add('hide')
+        body.style.paddingRight = this.scrollWidth + 'px'
+
+        // let dom = document.querySelectorAll('.hide-img-box img')
+        // dom[idx].click()
+        // $('.hide-img-box').eq(idx).find('img').click()
+      },
+      showPicModal() {
+        const _this = this;
+        this.showPic = !this.showPic
+        if (!this.showPic) {
+          _this.swiperRead.autoplay.start();
+          let idx = -1
+          this.logNewIdx.map((item, index) => {
+            if (item.idx == this.chooseNewIdx) {
+              idx = index
+            }
+          })
+          if (idx > -1) {
+            this.logNewIdx[idx].top = document.querySelector('.pic-modal div').scrollTop
+          } else {
+            this.logNewIdx.push({
+              idx: this.chooseNewIdx,
+              top: document.querySelector('.pic-modal div').scrollTop
+            })
+          }
+          document.querySelector('.pic-modal div').scrollTop = 0
+          this.showClose = false
+          this.$nextTick(() => {
+            let body = document.querySelector('body')
+            body.classList.remove('hide')
+            body.style.paddingRight = '0'
+            this.chooseNewIdx = -1
+          })
+        } else {
+          setTimeout(() => {
+            _this.swiperRead.autoplay.stop();
+          }, 500);
+          if (this.logFireList.indexOf(this.chooseNewIdx) > -1) {
+            this.showClose = true
+          } else {
+            setTimeout(() => {
+              this.logFireList.push(this.chooseNewIdx)
+              this.showClose = true
+            }, 1600)
+          }
+        }
+      },
+      welfareTab(type) {
+        if (type == 1) {
+          this.mySwiperWelfare.slideNext()
+        } else {
+          this.mySwiperWelfare.slidePrev()
+        }
+      },
+      activeLink(url) {
+        url = JSON.parse(url)
+        window.open(url.ZYDMALL)
+      },
+      clickAllTab(pidx, cidx) {
+        if (pidx == 0) {
+          this.mySwiperAll.slideToLoop(cidx)
+        } else {
+          this.mySwiperAll.slideToLoop(this.allLenList[pidx - 1] + cidx)
+        }
+        this.mySwiperAll.autoplay.start();
+        this.showSelect = -1
+      },
+      newLink(url) {
+        if (!url) return;
+        window.open(url)
+      },
+      imgLink() {
+        console.log('loginStatus', this.loginStatus)
+        if (!this.loginStatus) {
+          this.loginShow = true
+          this.clickGif = true
+          return false;
+        }
+        this.loadQt = true
+        this.$nextTick(() => {
+          this.ask.pop = true
+          // this.robStatus = true
+        })
+
+        // window.open('/center/survey/newFeedback.html')
+      },
+      loginsuccess() {
+        this.loginStatus = true
+        if (this.clickGif) {
+          this.imgLink()
+          this.clickGif = false
+        }
+        this.isLogin = false;
+        this.$nextTick(() => {
+          this.isLogin = true;
+        })
+        // window.location.reload(false);
+      },
+      //关闭登录框
+      loginClose() {
+        this.loginShow = false;
+      },
+      showLoginModal() {
+        this.loginShow = true;
+      },
+      selectEnter() {
+        this.mySwiperAll.autoplay.stop();
+      },
+      SelectLeave() {
+        this.mySwiperAll.autoplay.start();
+      },
+      downEnter(idx) {
+        this.showSelect = idx;
+      },
+      downLeave() {
+        this.showSelect = -1;
+      },
+      askClose() {
+        this.ask.pop = false;
+        // setTimeout(() => {this.robStatus = false},215)
+      },
+      clickcall() {
+        setTimeout(() => {
+          setManLeft()
+        }, 200)
+      },
+      setManLeft() {
+        let lf = window.innerWidth - 315;
+        let siderLf = window.innerWidth - 18;
+        let calLf = window.innerWidth - 38 - 46 - 364;
+        let dom = document.getElementsByClassName('qt-img');
+        let siderDom = document.getElementById('side-bar');
+        let callDom = document.getElementById('udesk_panel');
+        dom[0].style.left = lf + 'px'
+        siderDom.style.right = 'auto'
+        siderDom.style.left = siderLf + 'px'
+        if (callDom) {
+          callDom.style.right = 'auto'
+          callDom.style.left = calLf + 'px'
+        }
+      },
+      detectZoom() {
+        var ratio = 0,
+          screen = window.screen,
+          ua = navigator.userAgent.toLowerCase();
+
+        if (window.devicePixelRatio !== undefined) {
+          ratio = window.devicePixelRatio;
+        } else if (~ua.indexOf('msie')) {
+          if (screen.deviceXDPI && screen.logicalXDPI) {
+            ratio = screen.deviceXDPI / screen.logicalXDPI;
+          }
+        } else if (window.outerWidth !== undefined && window.innerWidth !== undefined) {
+          ratio = window.outerWidth / window.innerWidth;
+        }
+
+        if (ratio) {
+          ratio = Math.round(ratio * 100);
+        }
+        return ratio;
+      },
+      scrollTo(index) {
+        this.$nextTick(() => {
+          this.$refs[`menu${index}`][0].$el.scrollIntoView({ behavior: 'smooth' })
+        })
+      },
+      handleScroll() {
+        //滚动高度
+        const docScrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        const docHeight = document.documentElement.clientHeight || document.body.clientHeight;
+        const targetWrapTop = this.$refs[`scrollView`].offsetTop
+        if (docScrollTop >= targetWrapTop) {
+          this.isFixNav = true
+          // for (let i = 0, leng = this.menuModules.length; i < leng; i++) {
+          for (let i = 1, leng = this.modules.length; i <= leng; i++) {
+            let target = this.$refs[`menu${i}`][0].$el
+            const targetTop = target.offsetTop + targetWrapTop
+            // if (Math.abs(docScrollTop - targetTop) <= 100) {
+            if ((docScrollTop + docHeight / 3) >= targetTop) {
+              this.activeMenu = i
+              if (i >= 2) {
+                this.isShowMessageEnter = true
+              } else {
+                this.isShowMessageEnter = false
+              }
+              if (i === 7 && docScrollTop >= targetTop) {
+                this.isFixNav = false
+              } else {
+                this.isFixNav = true
+
+              }
+            }
+          }
+        } else {
+
+        }
+      },
+    }
+  })
+  </script>
+</body>
+
+</html>
